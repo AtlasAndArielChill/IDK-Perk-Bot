@@ -1,5 +1,4 @@
 module.exports = {
-  // Define your slash commands here
   commands: [
     {
       name: "buycrate",

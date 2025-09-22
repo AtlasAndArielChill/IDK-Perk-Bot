@@ -83,7 +83,17 @@ function calculateTotalXpBoost(perks) {
     return totalBoost;
 }
 
-async function updateLeaderboardChannel() {
+// Global variable to track the last update time
+let lastLeaderboardUpdate = 0;
+const LEADERBOARD_UPDATE_INTERVAL = 30000; // 30 seconds
+
+async function updateLeaderboardChannel(forceUpdate = false) {
+    const now = Date.now();
+    // Only update if the forcedUpdate flag is true OR if the last update was more than 30 seconds ago
+    if (!forceUpdate && now - lastLeaderboardUpdate < LEADERBOARD_UPDATE_INTERVAL) {
+        return;
+    }
+
     const channel = client.channels.cache.get(LEADERBOARD_CHANNEL_ID);
     if (!channel) return console.error("Leaderboard channel not found!");
 
@@ -126,6 +136,7 @@ async function updateLeaderboardChannel() {
         saveData();
         console.log("New leaderboard message sent!");
     }
+    lastLeaderboardUpdate = now;
 }
 
 // --- 4. Client & Event Handling ---
@@ -145,6 +156,7 @@ client.on('ready', async () => {
     loadData();
     client.user.setActivity('for messages', { type: 'WATCHING' });
 
+    // --- Code to update nicknames on startup ---
     const guild = client.guilds.cache.get(GUILD_ID);
     if (guild) {
         for (const userId in userData) {
@@ -166,6 +178,7 @@ client.on('ready', async () => {
             }
         }
     }
+    // --- End of new code ---
 
     try {
         console.log('Started refreshing application (/) commands.');
@@ -174,7 +187,7 @@ client.on('ready', async () => {
             { body: commands },
         );
         console.log('Successfully reloaded application (/) commands.');
-        await updateLeaderboardChannel();
+        await updateLeaderboardChannel(true); // Force an update on startup
     } catch (error) {
         console.error(error);
     }
@@ -193,7 +206,7 @@ client.on('messageCreate', async message => {
     userData[userId].xp += xpGained;
     saveData();
 
-    await updateLeaderboardChannel();
+    await updateLeaderboardChannel(); // This will only update if the rate limit allows it
 });
 
 client.on('interactionCreate', async interaction => {
@@ -247,7 +260,7 @@ client.on('interactionCreate', async interaction => {
                 }
 
                 await interaction.editReply(replyMessage);
-                await updateLeaderboardChannel();
+                await updateLeaderboardChannel(true); // Force an immediate update after buying a crate
             } else {
                 const remaining = CRATE_COST - user.xp;
                 await interaction.editReply(`You need **${remaining}** more XP to buy a perk crate.`);
@@ -280,7 +293,7 @@ client.on('interactionCreate', async interaction => {
                 content: `Gave **${amount}** XP to **${targetUser.username}**!`
             });
 
-            await updateLeaderboardChannel();
+            await updateLeaderboardChannel(true); // Force an immediate update after giving XP
             break;
 
         case 'leaderboardxp':

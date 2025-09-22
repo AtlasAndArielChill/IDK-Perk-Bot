@@ -1,39 +1,31 @@
-module.exports = {
-  commands: [
-    {
-      name: "buycrate",
-      description: "Buy a perk crate for 10,000 XP.",
-    },
-    {
-      name: "leaderboardxp",
-      description: "Shows the XP leaderboard.",
-    },
-    {
-      name: "leaderboardperks",
-      description: "Shows the perk leaderboard.",
-    },
-    {
-      name: "myinfo",
-      description: "Shows your current XP and perks.",
-    },
-    {
-      name: "givexp",
-      description: "Give a specific amount of XP to a user.",
-      options: [
-        {
-          name: "user",
-          type: 6, // USER type
-          description: "The user to give XP to.",
-          required: true,
-        },
-        {
-          name: "amount",
-          type: 4, // INTEGER type
-          description: "The amount of XP to give.",
-          required: true,
-        },
-      ],
-      default_member_permissions: 8, // Administrator permission
-    },
-  ],
-};
+const { SlashCommandBuilder } = require('discord.js');
+
+const commands = [
+  new SlashCommandBuilder()
+    .setName('buycrate')
+    .setDescription('Spends 10000 XP to get a random perk!'),
+  
+  new SlashCommandBuilder()
+    .setName('myinfo')
+    .setDescription('Shows your current XP and perks.'),
+
+  new SlashCommandBuilder()
+    .setName('givexp')
+    .setDescription('Gives XP to a user (Admin only).')
+    .addUserOption(option =>
+      option
+        .setName('user')
+        .setDescription('The user to give XP to.')
+        .setRequired(true))
+    .addIntegerOption(option =>
+      option
+        .setName('amount')
+        .setDescription('The amount of XP to give.')
+        .setRequired(true)),
+
+  new SlashCommandBuilder()
+    .setName('leaderboard')
+    .setDescription('Shows the current XP leaderboard.'),
+];
+
+module.exports = { commands };

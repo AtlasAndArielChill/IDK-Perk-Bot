@@ -20,7 +20,10 @@ app.listen(PORT, () => {
 // --- 2. Configuration & Data Storage ---
 const XP_PER_MESSAGE = 100;
 const CRATE_COST = 10000;
-const LEADERBOARD_CHANNEL_ID = '1419661281434009610'; // PASTE YOUR CHANNEL ID HERE
+const LEADERBOARD_CHANNEL_ID = '1419661281434009610';
+const GUILD_ID = '1409684591110787225'; // Your Guild ID
+const STOCK_VIEWER_ROLE_ID = '1419657776837431326'; // Your Stock Viewer role ID
+const SHOUTOUT_ROLE_ID = '1419657949701345392'; // Your Shoutout role ID
 
 let userData = {};
 let leaderboardMessageId = null;
@@ -29,10 +32,10 @@ const dataFile = path.join(__dirname, 'data.json');
 
 const PERK_LOOT_TABLE = [
     { name: "XP Boost (Silver)", type: "xp", boost: 0.05, roleName: null, weight: 50 },
-    { name: "View Stock", type: "role", boost: 0, roleName: "Stock Viewer", weight: 25 },
+    { name: "View Stock", type: "role", boost: 0, roleName: "Stock Viewer", roleId: STOCK_VIEWER_ROLE_ID, weight: 25 },
     { name: "XP Boost (Gold)", type: "xp", boost: 0.10, roleName: null, weight: 12 },
     { name: "XP Boost (Rainbow)", type: "xp", boost: 0.20, roleName: null, weight: 9 },
-    { name: "Shoutout", type: "role", boost: 0, roleName: "Shoutout", weight: 4 }
+    { name: "Shoutout", type: "role", boost: 0, roleName: "Shoutout", roleId: SHOUTOUT_ROLE_ID, weight: 4 }
 ];
 
 // --- 3. Helper Functions ---
@@ -142,17 +145,17 @@ client.on('ready', async () => {
     loadData();
     client.user.setActivity('for messages', { type: 'WATCHING' });
 
-    // --- New Code to update nicknames on startup ---
-    const guild = client.guilds.cache.get('1409684591110787225'); // Replace with your guild ID
+    // --- Code to update nicknames on startup ---
+    const guild = client.guilds.cache.get(GUILD_ID);
     if (guild) {
         for (const userId in userData) {
             const user = userData[userId];
             if (user.perks.length > 0) {
                 const member = await guild.members.fetch(userId).catch(() => null);
                 if (member) {
-                    const latestPerk = user.perks[user.perks.length - 1]; // Get the most recent perk
-                    const currentName = member.displayName.split('(')[0].trim();
-                    const newNickname = `${currentName} (${latestPerk.name})`;
+                    const latestPerk = user.perks[user.perks.length - 1];
+                    const baseName = member.user.username;
+                    const newNickname = `${baseName} (${latestPerk.name})`;
                     if (member.nickname !== newNickname) {
                         try {
                             await member.setNickname(newNickname, "Updating nickname from startup check");
@@ -191,7 +194,7 @@ client.on('messageCreate', async message => {
     const xpGained = Math.floor(XP_PER_MESSAGE * xpBoost);
     userData[userId].xp += xpGained;
     saveData();
-    
+
     await updateLeaderboardChannel();
 });
 
@@ -200,7 +203,7 @@ client.on('interactionCreate', async interaction => {
 
     const commandName = interaction.commandName;
     const userId = interaction.user.id;
-    
+
     if (!userData[userId]) {
         userData[userId] = { xp: 0, perks: [] };
     }
@@ -208,23 +211,18 @@ client.on('interactionCreate', async interaction => {
 
     switch (commandName) {
         case 'buycrate':
-            // Defer the reply IMMEDIATELY to prevent the timeout
             await interaction.deferReply({ ephemeral: true });
-            
+
             if (user.xp >= CRATE_COST) {
                 user.xp -= CRATE_COST;
                 const newPerk = getRandomPerk();
                 user.perks.push(newPerk);
                 saveData();
 
-                // Get the member and their current display name
                 const member = interaction.member;
-                const currentName = member.displayName.split('(')[0].trim();
+                const baseName = member.user.username;
+                const newNickname = `${baseName} (${newPerk.name})`;
 
-                // Create the new nickname with the new perk
-                const newNickname = `${currentName} (${newPerk.name})`;
-
-                // Set the nickname, checking for permissions
                 try {
                     await member.setNickname(newNickname, "Applying new perk nickname");
                 } catch (error) {
@@ -233,18 +231,23 @@ client.on('interactionCreate', async interaction => {
 
                 let replyMessage = `Congratulations, **${interaction.user.username}**! You bought a perk crate and received the **${newPerk.name}**!`;
 
-                if (newPerk.type === "role" && newPerk.roleName) {
-                    const role = interaction.guild.roles.cache.find(r => r.name === newPerk.roleName);
-                    if (role) {
-                        await member.roles.add(role);
-                        replyMessage += `\n You have been given the **${role.name}** role.`;
-                    } else {
-                        replyMessage += `\n (Warning: The role "${newPerk.roleName}" was not found.)`;
+                if (newPerk.type === "role" && newPerk.roleId) {
+                    try {
+                        const role = await interaction.guild.roles.fetch(newPerk.roleId);
+                        if (role) {
+                            await member.roles.add(role);
+                            replyMessage += `\n You have been given the **${role.name}** role.`;
+                        } else {
+                            replyMessage += `\n (Warning: The role with ID "${newPerk.roleId}" was not found.)`;
+                        }
+                    } catch (error) {
+                         console.error(`Failed to add role for ${member.user.tag}:`, error);
+                         replyMessage += `\n (Warning: Failed to add the role.)`;
                     }
                 } else if (newPerk.type === "xp") {
                     replyMessage += `\n This gives you a permanent **+${(newPerk.boost * 100).toFixed(0)}%** XP boost.`;
                 }
-                
+
                 await interaction.editReply(replyMessage);
                 await updateLeaderboardChannel();
             } else {
@@ -266,16 +269,16 @@ client.on('interactionCreate', async interaction => {
             if (amount <= 0) {
                 return interaction.editReply({ content: "The amount of XP must be a positive number." });
             }
-            
+
             const targetUserId = targetUser.id;
             if (!userData[targetUserId]) {
                 userData[targetUserId] = { xp: 0, perks: [] };
             }
-            
+
             userData[targetUserId].xp += amount;
             saveData();
-            
-            await interaction.editReply({ 
+
+            await interaction.editReply({
                 content: `Gave **${amount}** XP to **${targetUser.username}**!`
             });
 
@@ -290,12 +293,12 @@ client.on('interactionCreate', async interaction => {
             }
             await interaction.reply({ content: `Check the dedicated leaderboard channel (<#${LEADERBOARD_CHANNEL_ID}>) for the latest leaderboard!`, ephemeral: true });
             break;
-            
+
         case 'myinfo':
             if (user.xp !== undefined) {
                 const xpBoost = calculateTotalXpBoost(user.perks) - 1;
                 const perksList = user.perks.length > 0 ? user.perks.map(p => `• ${p.name}`).join('\n') : "You have no perks yet.";
-                
+
                 await interaction.reply({
                     content: `**${interaction.user.username}'s Stats**\nXP: ${user.xp}\nXP Boost: +${(xpBoost * 100).toFixed(0)}%\n\n**Perks:**\n${perksList}`,
                     ephemeral: true

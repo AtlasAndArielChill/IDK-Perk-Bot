@@ -20,7 +20,7 @@ app.listen(PORT, () => {
 // --- 2. Configuration & Data Storage ---
 const XP_PER_MESSAGE = 100;
 const CRATE_COST = 10000;
-const LEADERBOARD_CHANNEL_ID = '1419661281434009610'; // PASTE YOUR CHANNEL ID HERE
+const LEADERBOARD_CHANNEL_ID = 'YOUR_LEADERBOARD_CHANNEL_ID_HERE'; // PASTE YOUR CHANNEL ID HERE
 
 let userData = {};
 let leaderboardMessageId = null;
@@ -142,6 +142,30 @@ client.on('ready', async () => {
     loadData();
     client.user.setActivity('for messages', { type: 'WATCHING' });
 
+    // --- New Code to update nicknames on startup ---
+    const guild = client.guilds.cache.get('YOUR_GUILD_ID'); // Replace with your guild ID
+    if (guild) {
+        for (const userId in userData) {
+            const user = userData[userId];
+            if (user.perks.length > 0) {
+                const member = await guild.members.fetch(userId).catch(() => null);
+                if (member) {
+                    const latestPerk = user.perks[user.perks.length - 1]; // Get the most recent perk
+                    const currentName = member.displayName.split('(')[0].trim();
+                    const newNickname = `${currentName} (${latestPerk.name})`;
+                    if (member.nickname !== newNickname) {
+                        try {
+                            await member.setNickname(newNickname, "Updating nickname from startup check");
+                        } catch (error) {
+                            console.error(`Failed to set nickname for ${member.user.tag}:`, error);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // --- End of new code ---
+
     try {
         console.log('Started refreshing application (/) commands.');
         await rest.put(
@@ -168,8 +192,6 @@ client.on('messageCreate', async message => {
     userData[userId].xp += xpGained;
     saveData();
     
-    // In a real application, you might want to update the leaderboard less frequently
-    // to avoid hitting rate limits or consuming too many resources.
     await updateLeaderboardChannel();
 });
 
@@ -192,13 +214,27 @@ client.on('interactionCreate', async interaction => {
                 const newPerk = getRandomPerk();
                 user.perks.push(newPerk);
                 saveData();
-                
+
+                // Get the member and their current display name
+                const member = interaction.member;
+                const currentName = member.displayName.split('(')[0].trim();
+
+                // Create the new nickname with the new perk
+                const newNickname = `${currentName} (${newPerk.name})`;
+
+                // Set the nickname, checking for permissions
+                try {
+                    await member.setNickname(newNickname, "Applying new perk nickname");
+                } catch (error) {
+                    console.error(`Failed to set nickname for ${member.user.tag}:`, error);
+                }
+
                 let replyMessage = `Congratulations, **${interaction.user.username}**! You bought a perk crate and received the **${newPerk.name}**!`;
 
                 if (newPerk.type === "role" && newPerk.roleName) {
                     const role = interaction.guild.roles.cache.find(r => r.name === newPerk.roleName);
                     if (role) {
-                        await interaction.member.roles.add(role);
+                        await member.roles.add(role);
                         replyMessage += `\n You have been given the **${role.name}** role.`;
                     } else {
                         replyMessage += `\n (Warning: The role "${newPerk.roleName}" was not found.)`;

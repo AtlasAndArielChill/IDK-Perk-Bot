@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Partials, REST, Routes, InteractionType, AttachmentBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, REST, Routes, AttachmentBuilder } = require('discord.js');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -168,9 +168,9 @@ client.on('messageCreate', async message => {
     userData[userId].xp += xpGained;
     saveData();
     
-    if (message.guild.id) {
-        await updateLeaderboardChannel();
-    }
+    // In a real application, you might want to update the leaderboard less frequently
+    // to avoid hitting rate limits or consuming too many resources.
+    await updateLeaderboardChannel();
 });
 
 client.on('interactionCreate', async interaction => {
@@ -216,15 +216,17 @@ client.on('interactionCreate', async interaction => {
             break;
 
         case 'givexp':
+            await interaction.deferReply({ ephemeral: true });
+
             if (!interaction.member.permissions.has('Administrator')) {
-                return interaction.reply({ content: "You do not have permission to use this command.", ephemeral: true });
+                return interaction.editReply({ content: "You do not have permission to use this command." });
             }
 
             const targetUser = interaction.options.getUser('user');
             const amount = interaction.options.getInteger('amount');
 
             if (amount <= 0) {
-                return interaction.reply({ content: "The amount of XP must be a positive number.", ephemeral: true });
+                return interaction.editReply({ content: "The amount of XP must be a positive number." });
             }
             
             const targetUserId = targetUser.id;
@@ -235,9 +237,8 @@ client.on('interactionCreate', async interaction => {
             userData[targetUserId].xp += amount;
             saveData();
             
-            await interaction.reply({ 
-                content: `Gave **${amount}** XP to **${targetUser.username}**!`, 
-                ephemeral: true 
+            await interaction.editReply({ 
+                content: `Gave **${amount}** XP to **${targetUser.username}**!`
             });
 
             await updateLeaderboardChannel();

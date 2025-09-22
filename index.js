@@ -145,7 +145,6 @@ client.on('ready', async () => {
     loadData();
     client.user.setActivity('for messages', { type: 'WATCHING' });
 
-    // --- Code to update nicknames on startup ---
     const guild = client.guilds.cache.get(GUILD_ID);
     if (guild) {
         for (const userId in userData) {
@@ -167,7 +166,6 @@ client.on('ready', async () => {
             }
         }
     }
-    // --- End of new code ---
 
     try {
         console.log('Started refreshing application (/) commands.');
@@ -269,16 +267,16 @@ client.on('interactionCreate', async interaction => {
             if (amount <= 0) {
                 return interaction.editReply({ content: "The amount of XP must be a positive number." });
             }
-
+            
             const targetUserId = targetUser.id;
             if (!userData[targetUserId]) {
                 userData[targetUserId] = { xp: 0, perks: [] };
             }
-
+            
             userData[targetUserId].xp += amount;
             saveData();
-
-            await interaction.editReply({
+            
+            await interaction.editReply({ 
                 content: `Gave **${amount}** XP to **${targetUser.username}**!`
             });
 
@@ -293,18 +291,18 @@ client.on('interactionCreate', async interaction => {
             }
             await interaction.reply({ content: `Check the dedicated leaderboard channel (<#${LEADERBOARD_CHANNEL_ID}>) for the latest leaderboard!`, ephemeral: true });
             break;
-
+            
         case 'myinfo':
+            await interaction.deferReply({ ephemeral: true });
             if (user.xp !== undefined) {
                 const xpBoost = calculateTotalXpBoost(user.perks) - 1;
                 const perksList = user.perks.length > 0 ? user.perks.map(p => `• ${p.name}`).join('\n') : "You have no perks yet.";
-
-                await interaction.reply({
+                
+                await interaction.editReply({
                     content: `**${interaction.user.username}'s Stats**\nXP: ${user.xp}\nXP Boost: +${(xpBoost * 100).toFixed(0)}%\n\n**Perks:**\n${perksList}`,
-                    ephemeral: true
                 });
             } else {
-                await interaction.reply({ content: "You have no stats yet. Start sending messages to gain XP!", ephemeral: true });
+                await interaction.editReply({ content: "You have no stats yet. Start sending messages to gain XP!" });
             }
             break;
     }

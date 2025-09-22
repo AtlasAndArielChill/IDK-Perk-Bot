@@ -20,7 +20,7 @@ app.listen(PORT, () => {
 // --- 2. Configuration & Data Storage ---
 const XP_PER_MESSAGE = 100;
 const CRATE_COST = 10000;
-const LEADERBOARD_CHANNEL_ID = 'YOUR_LEADERBOARD_CHANNEL_ID_HERE'; // PASTE YOUR CHANNEL ID HERE
+const LEADERBOARD_CHANNEL_ID = '1419661281434009610'; // PASTE YOUR CHANNEL ID HERE
 
 let userData = {};
 let leaderboardMessageId = null;

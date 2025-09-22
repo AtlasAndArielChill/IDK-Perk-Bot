@@ -20,7 +20,7 @@ app.listen(PORT, () => {
 // --- 2. Configuration & Data Storage ---
 const XP_PER_MESSAGE = 100;
 const CRATE_COST = 10000;
-const LEADERBOARD_CHANNEL_ID = '1419661281434009610'; // PASTE YOUR CHANNEL ID HERE
+const LEADERBOARD_CHANNEL_ID = 'YOUR_LEADERBOARD_CHANNEL_ID_HERE'; // PASTE YOUR CHANNEL ID HERE
 
 let userData = {};
 let leaderboardMessageId = null;
@@ -213,6 +213,34 @@ client.on('interactionCreate', async interaction => {
                 const remaining = CRATE_COST - user.xp;
                 await interaction.editReply(`You need **${remaining}** more XP to buy a perk crate.`);
             }
+            break;
+
+        case 'givexp':
+            if (!interaction.member.permissions.has('Administrator')) {
+                return interaction.reply({ content: "You do not have permission to use this command.", ephemeral: true });
+            }
+
+            const targetUser = interaction.options.getUser('user');
+            const amount = interaction.options.getInteger('amount');
+
+            if (amount <= 0) {
+                return interaction.reply({ content: "The amount of XP must be a positive number.", ephemeral: true });
+            }
+            
+            const targetUserId = targetUser.id;
+            if (!userData[targetUserId]) {
+                userData[targetUserId] = { xp: 0, perks: [] };
+            }
+            
+            userData[targetUserId].xp += amount;
+            saveData();
+            
+            await interaction.reply({ 
+                content: `Gave **${amount}** XP to **${targetUser.username}**!`, 
+                ephemeral: true 
+            });
+
+            await updateLeaderboardChannel();
             break;
 
         case 'leaderboardxp':

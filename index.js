@@ -143,7 +143,7 @@ client.on('ready', async () => {
     client.user.setActivity('for messages', { type: 'WATCHING' });
 
     // --- New Code to update nicknames on startup ---
-    const guild = client.guilds.cache.get('YOUR_GUILD_ID'); // Replace with your guild ID
+    const guild = client.guilds.cache.get('1409684591110787225'); // Replace with your guild ID
     if (guild) {
         for (const userId in userData) {
             const user = userData[userId];

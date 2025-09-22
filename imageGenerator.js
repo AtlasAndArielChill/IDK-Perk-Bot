@@ -1,58 +1,63 @@
-const { createCanvas, loadImage } = require('@napi-rs/canvas');
+const { createCanvas, loadImage } = require('canvas');
 const path = require('path');
 const fs = require('fs');
 
-async function generateLeaderboardImage(title, users, type) {
+async function generateLeaderboardImage(title, users, metricName) {
     const width = 800;
-    const height = 600;
+    const height = 100 + users.length * 70;
     const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext('2d');
+    const context = canvas.getContext('2d');
 
-    // Load a background image if you want, otherwise use a solid color
-    try {
-        const backgroundImage = await loadImage(path.join(__dirname, 'background.png'));
-        ctx.drawImage(backgroundImage, 0, 0, width, height);
-    } catch (err) {
-        console.error('Could not load background image, using a fallback color.');
-        ctx.fillStyle = '#1e1e1e';
-        ctx.fillRect(0, 0, width, height);
-    }
-    
-    // Set text style and shadow
-    ctx.fillStyle = '#FFFFFF';
-    ctx.shadowColor = '#000000';
-    ctx.shadowBlur = 5;
+    // Background
+    context.fillStyle = '#36393F';
+    context.fillRect(0, 0, width, height);
 
     // Title
-    ctx.font = 'bold 48px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(title, width / 2, 70);
+    context.fillStyle = '#FFFFFF';
+    context.font = 'bold 40px sans-serif';
+    context.textAlign = 'center';
+    context.fillText(title, width / 2, 50);
 
-    // List of users
-    ctx.font = '28px sans-serif';
-    ctx.textAlign = 'left';
-    let y = 150;
-    
-    for (const [index, user] of users.entries()) {
-        // Draw the user's avatar
+    // Leaderboard entries
+    context.font = '24px sans-serif';
+    context.textAlign = 'left';
+    let y = 120;
+
+    for (let i = 0; i < users.length; i++) {
+        const user = users[i];
+        const rank = i + 1;
+        const rankColor = rank === 1 ? '#FFD700' : rank === 2 ? '#C0C0C0' : rank === 3 ? '#CD7F32' : '#FFFFFF';
+
+        // Rank
+        context.fillStyle = rankColor;
+        context.fillText(`${rank}.`, 50, y);
+
+        // Avatar
         if (user.avatarUrl) {
             try {
                 const avatar = await loadImage(user.avatarUrl);
-                ctx.save();
-                ctx.beginPath();
-                ctx.arc(60, y - 10, 25, 0, Math.PI * 2, true);
-                ctx.closePath();
-                ctx.clip();
-                ctx.drawImage(avatar, 35, y - 35, 50, 50);
-                ctx.restore();
+                context.save();
+                context.beginPath();
+                context.arc(100, y - 10, 30, 0, Math.PI * 2, true);
+                context.closePath();
+                context.clip();
+                context.drawImage(avatar, 70, y - 40, 60, 60);
+                context.restore();
             } catch (err) {
                 console.error(`Failed to load avatar for ${user.name}:`, err);
             }
         }
-        
-        const text = `#${index + 1} ${user.name}: ${user.value} ${type}`;
-        ctx.fillText(text, 100, y);
-        y += 60;
+
+        // Username
+        context.fillStyle = '#FFFFFF';
+        context.fillText(user.name, 150, y);
+
+        // Metric
+        context.fillStyle = '#00FF00';
+        context.textAlign = 'right';
+        context.fillText(`${user.value} ${metricName}`, width - 50, y);
+
+        y += 70;
     }
 
     const buffer = canvas.toBuffer('image/png');

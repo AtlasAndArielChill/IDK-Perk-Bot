@@ -1,0 +1,19 @@
+{
+  "name": "nodejs",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.80",
+    "@types/node": "^22.13.11",
+    "better-sqlite3": "^12.4.1",
+    "discord.js": "^14.22.1",
+    "dotenv": "^17.2.3"
+  }
+}
